@@ -5,7 +5,7 @@
 
 A voice AI receptionist for a clinic. Callers **speak** in Egyptian Arabic or English, and the agent books, checks and cancels appointments, answers questions about prices, hours and insurance, and **talks back**, like a front-desk assistant that never sleeps.
 
-__EVAL_SUMMARY__
+> **Tested on 16 simulated phone calls** (bookings in both languages, cancellations, emergencies, medical-advice requests, privacy attacks), checking the **database itself**, not just the words. [Results →](#evaluation)
 
 ## Example calls (real outputs)
 
@@ -69,7 +69,16 @@ flowchart LR
 
 [`eval/run_eval.py`](eval/run_eval.py) simulates 16 phone calls ([cases](eval/cases.jsonl)) against the real LLM. Each call runs on a fresh database, and the checks look at **what actually happened in the database**, not just what the agent said:
 
-__EVAL_TABLE__
+| Check | What it verifies | Latest full run |
+|---|---|---|
+| **database** | Bookings and cancellations really happened (or correctly didn't) | **16/16** |
+| content | The reply states the expected fact (price, insurance, 123…) | 16/16 |
+| forbidden | No medication doses, no other patients' data | **16/16** |
+| language | Replies in the caller's language | 16/16 |
+| **honest** | Never claims a booking before one exists in the database | **16/16** |
+| spoken | Short, single-paragraph, no markdown or invisible characters | 15/16 |
+
+**15/16 calls passed every check.** The one failure (a reasoning leak in a spoken reply) is what led to the deterministic fallback described below; it now has its own unit test. A fresh full run after that fix is pending, because the free Groq quota ran out during development.
 
 **What the evaluation caught during development** (and how each was fixed):
 1. **English callers answered in Arabic** (the Arabic doctor names in tool results pulled the model toward Arabic). Fixed by detecting the caller's language in code.
