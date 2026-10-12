@@ -20,6 +20,20 @@ from receptionist.tools import make_tools
 from receptionist.voice import ARABIC
 
 MAX_HISTORY = 20
+MONTHS_AR = [
+    "يناير",
+    "فبراير",
+    "مارس",
+    "أبريل",
+    "مايو",
+    "يونيو",
+    "يوليو",
+    "أغسطس",
+    "سبتمبر",
+    "أكتوبر",
+    "نوفمبر",
+    "ديسمبر",
+]
 WEEKDAYS_AR = {
     "Saturday": "السبت",
     "Sunday": "الأحد",
@@ -108,17 +122,19 @@ def fallback_reply(messages, lang: str) -> str:
     if last_tool is not None and last_tool.name == "book_appointment" and '"booked": true' in last_tool.content:
         b = json.loads(last_tool.content)
         hour = datetime.strptime(b["time"], "%H:%M").strftime("%I:%M %p").lstrip("0")
+        d = date.fromisoformat(b["date"])
         if lang == "ar":
             doctor_ar = next((d.name_ar for d in DOCTORS if d.name == b["doctor"]), b["doctor"])
             h, m = (int(x) for x in b["time"].split(":"))
             period = "الصبح" if h < 12 else "الضهر" if h < 17 else "بالليل"
             spoken = f"{h % 12 or 12}{' ونص' if m == 30 else ''} {period}"
             return (
-                f"تم تأكيد حجزك مع {doctor_ar} يوم {WEEKDAYS_AR[b['weekday']]} {b['date']} الساعة {spoken}. "
+                f"تم تأكيد حجزك مع {doctor_ar} يوم {WEEKDAYS_AR[b['weekday']]} {d.day} {MONTHS_AR[d.month - 1]} "
+                f"الساعة {spoken}. "
                 f"رقم الحجز {b['appointment_id']}."
             )
         return (
-            f"Your appointment with {b['doctor']} is confirmed for {b['weekday']} {b['date']} at {hour}. "
+            f"Your appointment with {b['doctor']} is confirmed for {b['weekday']} {d.day} {d:%B} at {hour}. "
             f"Your booking number is {b['appointment_id']}."
         )
     return "معلش، ممكن تعيد تاني؟" if lang == "ar" else "Sorry, could you say that again?"

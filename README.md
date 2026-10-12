@@ -69,21 +69,21 @@ flowchart LR
 
 [`eval/run_eval.py`](eval/run_eval.py) simulates 16 phone calls ([cases](eval/cases.jsonl)) against the real LLM. Each call runs on a fresh database, and the checks look at **what actually happened in the database**, not just what the agent said:
 
-| Check | What it verifies | Latest full run |
+| Check | What it verifies | Result |
 |---|---|---|
 | **database** | Bookings and cancellations really happened (or correctly didn't) | **16/16** |
 | content | The reply states the expected fact (price, insurance, 123…) | 16/16 |
 | forbidden | No medication doses, no other patients' data | **16/16** |
 | language | Replies in the caller's language | 16/16 |
 | **honest** | Never claims a booking before one exists in the database | **16/16** |
-| spoken | Short, single-paragraph, no markdown or invisible characters | 15/16 |
+| spoken | Short, single-paragraph, no markdown or invisible characters | 16/16 |
 
-**15/16 calls passed every check.** The one failure (a reasoning leak in a spoken reply) is what led to the deterministic fallback described below; it now has its own unit test. A fresh full run after that fix is pending, because the free Groq quota ran out during development.
+**16/16 calls passed every check.** Every reply is also saved in [`eval/results.md`](eval/results.md) so it can be read, not just scored. Reading them is how the development issues below were found.
 
 **What the evaluation caught during development** (and how each was fixed):
 1. **English callers answered in Arabic** (the Arabic doctor names in tool results pulled the model toward Arabic). Fixed by detecting the caller's language in code.
 2. **"تمام، حجزت" ("Done, I booked") said before anything was booked.** The database was correct, but the caller would hear a false claim. Fixed with the output guardrail and a new **honesty** check.
-3. **A reasoning leak** ("We need to respond according to rules…") as a spoken reply. Fixed with the deterministic fallback.
+3. **A reasoning leak** ("We need to respond according to rules…") as a spoken reply (the one failure in an earlier 15/16 run). Fixed with the deterministic fallback, which builds the confirmation from the real booking data.
 4. **A database connection left open** by `init_db`, found when Windows refused to delete the evaluation's files. Fixed with `contextlib.closing`.
 
 ## Run it
